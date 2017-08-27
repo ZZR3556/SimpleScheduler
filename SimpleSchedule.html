@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Simple Schedule</title>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+            integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+            crossorigin="anonymous"></script>
+  </head>
+  <body>
+
+    <dev id="errorMessages"></div>
+
+    <button type="button" id="button-new">NEW</button>
+
+    <form>
+        <input id="searchInput" placeholder="Search">
+        <button onClick="searchAppointments()">Search</button>
+    </form>
+
+    <div id="appsTable">
+    </div>
+
+    <script type="text/javascript">
+
+      function buildTable( apps )
+      {
+        var table = $('<table></table>');
+        var header = $('<tr></tr>');
+        var dateHeader = $('<th></th>').text('DATE');
+        var timeHeader = $('<th></th>').text('Time');
+        var descHeader = $('<th></th>').text('DESCRIPTION');
+        header.append(dateHeader).append(timeHeader).append(descHeader);
+        table.append(header);
+
+        apps.forEach( function( app, index )
+        {
+          var row = $("<tr></tr>");
+          var date = $("<td/>").text(app.date);
+          var time = $("<td/>").text(app.time);
+          var desc = $("<td/>").text(app.desc);
+          row.append(date).append(time).append(desc);
+          table.append(row);
+        } );
+
+        return table;
+      }
+
+//      fucntion searchAppointments()
+//      {
+//        var input = $("#searchInput");
+
+//        if ( input )
+//        {
+//            getAppointments( input );
+//        }
+//        else
+//        {
+//            // Reload page.
+//        }
+//      }
+
+      function updateTable( apps )
+      {
+		var table = buildTable( apps );
+
+        $("#appsTable").html(table);
+      }
+
+      function getAppointments( input )
+      {
+        $.ajax( { url: "schedules.json",
+                  dataType: 'json',
+                  success: updateTable } );
+      }
+
+      $(document).ready(getAppointments);
+
+    </script>
+
+  </body>
+</html>
