@@ -9,72 +9,102 @@
   </head>
   <body>
 
-    <dev id="errorMessages"></div>
+	<p><div id="errorMessages"></div></p>
 
-    <button type="button" id="button-new">NEW</button>
+    <p><button type="button" id="button-new" onclick="">NEW</button></p>
 
-    <form>
-        <input id="searchInput" placeholder="Search">
-        <button onClick="searchAppointments()">Search</button>
+    <p>
+    <form onsubmit="return false;" > <!-- return false prevents default page re-load behavoir  -->
+        <input class="searchInput" value="Initial Value" placeholder="Search">
+        <button onClick="searchAppointments($(this).parent().find('.searchInput').val())">Search</button>
     </form>
+    </p>
 
-    <div id="appsTable">
-    </div>
+    <p><div id="appsTable"></div></p>
 
     <script type="text/javascript">
 
       function buildTable( apps )
       {
-        var table = $('<table></table>');
-        var header = $('<tr></tr>');
-        var dateHeader = $('<th></th>').text('DATE');
-        var timeHeader = $('<th></th>').text('Time');
-        var descHeader = $('<th></th>').text('DESCRIPTION');
+        var table = $('<table/>').addClass("searchTable");
+        var header = $('<tr/>');
+        var dateHeader = $('<th/>').text('DATE');
+        var timeHeader = $('<th/>').text('Time');
+        var descHeader = $('<th/>').text('DESCRIPTION');
         header.append(dateHeader).append(timeHeader).append(descHeader);
         table.append(header);
 
         apps.forEach( function( app, index )
         {
-          var row = $("<tr></tr>");
-          var date = $("<td/>").text(app.date);
-          var time = $("<td/>").text(app.time);
+          var row = $("<tr/>");
+          var date = $("<td/>").text(app.date).css("text-align","center");
+          var time = $("<td/>").text(app.time).css("text-align","right").addClass("pad");
           var desc = $("<td/>").text(app.desc);
           row.append(date).append(time).append(desc);
           table.append(row);
         } );
 
+        table.css("width","100%").css("border","1px solid black");
+        table.find("th").css("border","1px solid black").css("text-align","left").css("padding","5px");
+        table.find("td").css("border","1px solid black").css("padding","5px");
+        table.find("td.pad").css("padding","0px 10px 0px 0px");
+        dateHeader.css("width","75");
+        timeHeader.css("width","75");
+
         return table;
       }
 
-//      fucntion searchAppointments()
-//      {
-//        var input = $("#searchInput");
-
-//        if ( input )
-//        {
-//            getAppointments( input );
-//        }
-//        else
-//        {
-//            // Reload page.
-//        }
-//      }
-
       function updateTable( apps )
       {
-		var table = buildTable( apps );
+        console.log("updateTable: apps = " + apps );
+
+        var table = buildTable( apps );
 
         $("#appsTable").html(table);
       }
 
-      function getAppointments( input )
+      function handleAjaxError( jqXHR, textStatus, errorThrown )
       {
-        $.ajax( { url: "schedules.json",
-                  dataType: 'json',
-                  success: updateTable } );
+        console.log("ajaxError: textStatus = " + textStatus );
+        console.log("ajaxError: errorThrown = " + errorThrown );
+
+        $("#errorMessages").text("Communication Error: " + textStatus );
       }
 
-      $(document).ready(getAppointments);
+      function clearPage()
+      {
+        $("#errorMessages").contents().remove();
+        $("#appsTable").children().remove();
+      }
+
+      function searchAppointments( query )
+      {
+        console.log("In searchAppointments() > query = " + query );
+
+        clearPage();
+
+        getAppointments( query );
+      }
+
+      function getAppointments( query )
+      {
+        query = query || '';
+
+        console.log("getAppointments: query = " + query );
+
+        $.ajax( { url: "schedules.json",
+                  dataType: 'json',
+                  data: { getAppointments: query },
+                  success: updateTable,
+                  error: handleAjaxError } );
+      }
+
+      $(document).ready( function()
+      {
+        console.log("In $(document).ready()" );
+
+        getAppointments();
+      } );
 
     </script>
 
