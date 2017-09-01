@@ -23,19 +23,21 @@
 
     <div id="scheduleForm" style="display: none;" >
       <p>
-      <form id="scheduleForm" action="http://localhost:8080/cgi-bin/schedule.pl" >
+      <form id="scheduleForm">
+        <input type="hidden" name="action" id="action" />
+        <input type="hidden" name="dts" id="dts" />
         <table>
           <tr>
             <th style=" padding: 5px">DATE</th>
-            <td><input id="date"><i class="glyphicon-calendar"></i></td>
+            <td><input name="date" id="date"><i class="glyphicon-calendar"></i></td>
           </tr>
           <tr>
             <th style=" padding: 5px">TIME</th>
-            <td><input id="time" placeholder="Time"></td>
+            <td><input name="time" id="time" placeholder="Time"></td>
           </tr>
           <tr>
             <th style=" padding: 5px">DESC</th>
-            <td><input id="desc" placeholder="Desc"></td>
+            <td><input name="desc" id="desc" placeholder="Desc"></td>
           </tr>
         </table>
       </form>
@@ -59,7 +61,6 @@
 
         config.showOn = "button";
         config.buttonImage = "http://jqueryui.com/resources/demos/datepicker/images/calendar.gif";
-        // config.buttonImageOnly = true;
 
         $('#date').datepicker( config );
       }
@@ -100,7 +101,7 @@
       {
         initFormButtons();
         $('div#scheduleForm').css("display","block");
-        $('form#scheduleForm').submit( onFormSubmit );
+        $('div#scheduleForm').find('input#action').val("addAppointment");
       }
 
       function hideScheduleForm()
@@ -122,22 +123,38 @@
         var strTime = form.find('input#time').val();
         var desc = form.find('input#desc').val();
 
-        if ( isValidDate( strDate )
-             && isValidTime( strTime )
-             && isValidDesc( desc ) )
-        {
+        var date = parseDate(strDate);
+        var time = parseTime(strTime);
 
-          var date = new Date( strDate + " " + strTime );
+        if ( ! date.valid )
+        {
+          displayError( date.errorMessage );
+        }
+        else if ( ! time.valid )
+        {
+          displayError( time.errorMessage );
+        }
+        else if ( desc == '' )
+        {
+          displayError("Description is required.");
+        }
+        else
+        {
+          var entered_ms = new Date( strDate + " " + strTime ).getTime();
 
           var currDate = new Date();
 
-          if ( date.getTime() < currDate.getTime() )
+          if ( entered_ms < currDate.getTime() )
           {
             displayError("The appoint time must be in the future.");
           }
           else
           {
             clearError();
+
+            form.find('input#date').val(date.formatted);
+            form.find('input#time').val(time.formatted);
+            form.find('input#dts').val(entered_ms);
 
             form.submit();
           }
@@ -146,12 +163,14 @@
         hideScheduleForm();
       }
 
-      function isValidTime( time )
+      function parseTime( time )
       {
+        var result = { valid: false };
+
         if ( time == '' )
         {
-          displayError("Time is required.");
-          return false;
+          result.errorMessage = "Time is required.";
+          return result;
         }
 
         var pattern = /^(\d{1,2}):(\d\d)\s(am|AM|pm|PM)$/;
@@ -164,22 +183,33 @@
 
           if ( fields == null )
           {
-            displayError("Time format is hh:mm [am|pm].");
-            return false;
+            result.errorMessage = "Time format is hh:mm [am|pm].";
+            return result;
           }
         }
 
-        var hh = fields[1];
-        var mm = fields[2];
+        var hh = Number(fields[1]);
+        var mm = Number(fields[2]);
         var n = ( fields.length - 1 );
+        var xm;
 
         if ( n == 2 )
         {
           // 24 hour format
           if ( hh > 24 )
           {
-            displayError("Hours is invalid. Expected 1-24.");
-            return false;
+            result.errorMessage = "Hours is invalid. Expected 1-24.";
+            return result;
+          }
+
+          if ( hh < 12 )
+          {
+            xm = 'am';
+          }
+          else
+          {
+            hh = hh - 12;
+            xm = 'pm';
           }
         }
         else // if ( n == 3 )
@@ -187,26 +217,31 @@
           // 12 hour format
           if ( hh > 12 )
           {
-            displayError("Hours is invalid. Expected 1-12.");
-            return false;
+            result.errorMessage = "Hours is invalid. Expected 1-12.";
+            return result;
           }
         }
 
-        if ( mm > 60 )
+        if ( mm > 59 )
         {
-           displayError("Minutes is invalid. Expected 1-60.");
-           return false;
+           result.errorMessage = "Minutes is invalid. Expected 0-59.";
+           return result;
         }
 
-        return true;
+        result.valid = true;
+        result.formatted = pad(hh,2) + ':' + pad(mm,2) + xm
+
+        return result;
       }
 
-      function isValidDate( date )
+      function parseDate( date )
       {
+        var result = { valid: false };
+
         if ( date == '' )
         {
-          displayError("Date is required.");
-          return false;
+          result.errorMessage = "Date is required.";
+          return result;
         }
 
         var pattern = /^(\d{1,2})(\/|-)(\d{1,2})(\/|-)(\d{4})$/;
@@ -214,63 +249,57 @@
 
         if ( fields == null )
         {
-          displayError("Date format is mm/dd/yyyy.");
-          return false;
+          result.errorMessage = "Date format is mm/dd/yyyy.";
+          return result;
         }
 
-        var month = fields[1];
-        var day = fields[3];
-        var year = fields[5];
+        var month = Number(fields[1]);
+        var day = Number(fields[3]);
+        var year = Number(fields[5]);
 
         if ( month > 12 )
         {
-          displayError("Month is invalid. Expected 1-12.");
-          return false;
-        }
-        else if ( month == 2 )
-        {
-          var isleap = ( year % 4 == 0 && ( year % 100 != 0 || year % 400 == 0 ));
-
-          if ( isleap )
-          {
-            if ( day > 29 )
-            {
-              displayError("Day is invalid for February " + year + ". Expected 1-29.");
-              return false;
-            }
-          }
-          else if ( day > 28 )
-          {
-            displayError("Day is invalid for February " + year + ". Expected 1-28.");
-            return false;
-          }
+          result.errorMessage = "Month is invalid. Expected 1-12.";
+          return result;
         }
         else
         {
           var daysPerMonth = [0,31,0,31,30,31,30,31,31,30,31,30,31];
           var daysInMonth = daysPerMonth[month];
 
-          if ( day > daysInMonth )
+          var monthNames = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
+          var monthName = monthNames[month];
+
+          if ( month == 2 )
           {
-            var monthNames = ["","January","","March","April","May","June","July","August","September","October","November","December"];
-            var monthName = monthNames[month];
-            displayError("Day is invalid for " + monthName + ". Expected 1-" + daysInMonth );
-            return false;
+            var isleap = ( year % 4 == 0 && ( year % 100 != 0 || year % 400 == 0 ));
+            daysInMonth = ( ( isleap && 29 ) || 28 );
+          }
+
+          if ( day < 1 || day > daysInMonth )
+          {
+            result.errorMessage = "Day is invalid for " + monthName + ". Expected 1-" + daysInMonth;
+            return result;
           }
         }
 
-        return true;
+        result.valid = true;
+        result.formatted = pad(month,2) + '/' + pad(day,2) + '/' + year;
+
+        return result;
       }
 
-      function isValidDesc( desc )
+      function pad( value, length )
       {
-        if ( desc == '' )
+        var string = String(value);
+        var n = length - string.length;
+
+        for ( var i = 0; i < n; i++ )
         {
-          displayError("Description is required.");
-          return false;
+          string = '0' + string;
         }
 
-        return true;
+        return string;
       }
 
       function displayError( message )
@@ -290,20 +319,12 @@
         hideScheduleForm();
       }
 
-      function onFormSubmit()
-      {
-        // TODO
-        // When in production, return true.
-        // When testing with no server, return false.
-        return false;
-      }
-
       function buildTable( apps )
       {
         var table = $('<table>').addClass("searchTable");
         var header = $('<tr>');
         var dateHeader = $('<th>').text('DATE');
-        var timeHeader = $('<th>').text('Time');
+        var timeHeader = $('<th>').text('TIME');
         var descHeader = $('<th>').text('DESCRIPTION');
         header.append(dateHeader).append(timeHeader).append(descHeader);
         table.append(header);
@@ -359,12 +380,7 @@
 
         clearError();
 
-        // TODO
-        // When in production, use "http://localhost:8080/cgi-bin/schedule.pl".
-        // When testing with no server, use "schedules.json".
-        var url = "schedules.json";
-
-        $.ajax( { url: url,
+        $.ajax( { url: 'schedule.pl',
                   dataType: 'json',
                   data: { getAppointments: query },
                   success: updateTable,
